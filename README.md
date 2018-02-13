@@ -4,6 +4,7 @@
     |_____|__|  |_____|_|___|____/|_____|_____| |_|  
 # openDECT_Light
 A lighter version of OpenDECT
+
 Here are described the major steps in the code:
 
 1. Read CT scan DICOM file using the pydicom library

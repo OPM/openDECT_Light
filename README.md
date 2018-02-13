@@ -13,6 +13,6 @@ Here are described the major steps in the code:
 4. Derive porosity, mean atomic number and photoelectric factor for each pixel in this region.
 
 ## Dependencies
-- PyQt4
+
 - [pydicom] (http://pydicom.readthedocs.io/en/stable/getting_started.html)
 - Tkinter (http://www.tcl.tk/software/tcltk/8.6.html)

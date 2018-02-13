@@ -231,8 +231,8 @@ def CheckInput():
 
 def Calculate_Parameters(low,high,Mask_saturated):
 
-	low.m=low.CTPixel #-1024
-	high.m=high.CTPixel #-1024
+	low.m=low.CTPixel #-1024 #uncomment -1024 when CT values are with offset
+	high.m=high.CTPixel #-1024 #uncomment -1024 when CT values are with offset
 	nnslices=len(low.m)
 	Tbox.delete('1.0', END)
 	Tbox.insert(END, "Low Energy CT mean value: "+str(low.m.mean())+"\n")
@@ -293,7 +293,7 @@ def Calc_for_well(myfolder,maincsv):
 
 	for subfolder in os.listdir(myfolder):
 		path=os.path.join(myfolder,subfolder);print path
-        
+        #look for high and low energy folders (here 140kV and 80kV)
 		if (os.path.exists(path+'/140kV') and os.path.exists(path+'/80kV')):
 			split=myfolder.split("_")
 			split2=split[-1].split("-")

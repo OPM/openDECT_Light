@@ -15,4 +15,4 @@ Here are described the major steps in the code:
 ## Dependencies
 - PyQt4
 - [pydicom] (http://pydicom.readthedocs.io/en/stable/getting_started.html)
-- Tcl/Tk (http://www.tcl.tk/software/tcltk/8.6.html)
+- Tkinter (http://www.tcl.tk/software/tcltk/8.6.html)

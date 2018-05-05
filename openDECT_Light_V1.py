@@ -29,7 +29,7 @@ matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # implement the default mpl key bindings
 from matplotlib.figure import Figure
-import dicom
+import pydicom
 import pylab
 import numpy as np
 from os import listdir
@@ -68,7 +68,7 @@ class Dicom:
                     pb_hD.step(1)
                     pb_hD.update()
 
-                ds = dicom.read_file(join(Path, f))
+                ds = pydicom.read_file(join(Path, f))
                 x=np.array(ds.pixel_array)
 
                 if (i==Padding_bottom):
@@ -81,8 +81,8 @@ class Dicom:
                 x_masked=GetMaskedValues(x,Offsetr,Offsetc)
 
                 sliceList.append(x_masked)
-                middleslicex.insert(0,x[:,a+Offsetc])
-                middleslicey.insert(0,x[a+Offsetr,:])
+                middleslicex.insert(0,x[:,int(a+Offsetc)])
+                middleslicey.insert(0,x[int(a+Offsetr),:])
 
         #gather slices into a single np-matrix
         self.CTPixel=np.zeros([len(sliceList),len(sliceList[0])])

@@ -23,6 +23,8 @@ import ttk
 import os
 import sys
 import matplotlib
+import math
+import imageio
 matplotlib.use('TkAgg')
 
 
@@ -38,6 +40,69 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import csv
 
+# Linear interpolation
+def lerp(a, b, f): return (1 - f) * a + b * f
+#Functions for getting voxels from a 3D texture
+# texture - 3D array of values (3D texture)
+# x, y, z - texture coordinates (from 0 to 1)
+def get_pixel_simple(texture, x, y, z):
+    # simple, no interpolation
+    zmax = len(texture) - 1
+    ymax = len(texture[0]) - 1
+    xmax = len(texture[1]) - 1
+    vZ = int(z * zmax)
+    vY = int(y * ymax)
+    vX = int(x * xmax)
+    return texture[vZ][vY][vX]
+def get_pixel_trilinear(texture, x, y, z):
+    # triliniear interpolation
+    zmax = len(texture) - 1
+    ymax = len(texture[0]) - 1
+    xmax = len(texture[1]) - 1
+    vZ = z * zmax
+    vY = y * ymax
+    vX = x * xmax
+    z0 = min(int(math.floor(vZ)), zmax - 1)
+    z1 = z0 + 1
+    y0 = min(int(math.floor(vY)), ymax - 1)
+    y1 = y0 + 1
+    x0 = min(int(math.floor(vX)), xmax - 1)
+    x1 = x0 + 1
+    xd = (vX - x0) / (x1 - x0)
+    yd = (vY - y0) / (y1 - y0)
+    zd = (vZ - z0) / (z1 - z0)
+    c000 = texture[z0][y0][x0]
+    c100 = texture[z0][y0][x1]
+    c010 = texture[z0][y1][x0]
+    c001 = texture[z1][y0][x0]
+    c110 = texture[z0][y1][x1]
+    c101 = texture[z1][y0][x1]
+    c011 = texture[z1][y1][x0]
+    c111 = texture[z1][y1][x1]
+    c00 = lerp(c000, c100, xd)
+    c01 = lerp(c001, c101, xd)
+    c10 = lerp(c010, c110, xd)
+    c11 = lerp(c011, c111, xd)
+    c0 = lerp(c00, c10, yd)
+    c1 = lerp(c01, c11, yd)
+    c = lerp(c0, c1, zd)
+    return c
+def get_pixel_coordinates(picX, picY, imgWidth, imgHeight, radius = 1.0, offset = (0, 0), startAngle = 0.0):
+    # this function maps x,y of a image to a cylinder coordinate in 3d texture 
+    # center is at (0.5, 0.5, 0.5), all coordinates are between 0 and 1 (start and end of the texture)
+    angleStep = 2 * math.pi / imgWidth
+    volX = (0.5 + radius * 0.5 * math.cos(picX * angleStep + startAngle)) + offset[0]
+    volY = (0.5 + radius * 0.5 * math.sin(picX * angleStep + startAngle)) + offset[1]
+    volZ = 1.0 * picY / imgHeight
+    return (volX, volY, volZ)
+def create_cylinder(imageWidth, imageHeight, voxels, radius = 1.0, offset = (0, 0), startAngle = 0.0):
+    imageData = np.zeros([imageHeight, imageWidth])
+    for y in range(0, imageHeight):
+        for x in range(0, imageWidth):
+            voxelPos = get_pixel_coordinates(x, y, imageWidth, imageHeight, radius, offset, startAngle)
+            imageData[y][x] = get_pixel_trilinear(voxels, voxelPos[0], voxelPos[1], voxelPos[2])
+    return imageData
+
 
 #Define a class to return the values slice by slice from the dicom
 
@@ -49,6 +114,7 @@ class Dicom:
         sliceList=[]
         middleslicex=[]
         middleslicey=[]
+        voxels = []
         x=[]
         i=Padding_bottom
 
@@ -70,6 +136,7 @@ class Dicom:
 
                 ds = pydicom.read_file(join(Path, f))
                 x=np.array(ds.pixel_array)
+                voxels.append(x)
 
                 if (i==Padding_bottom):
                     a = x.shape[0]/2
@@ -88,6 +155,10 @@ class Dicom:
         self.CTPixel=np.zeros([len(sliceList),len(sliceList[0])])
         self.CTSlice=np.zeros([len(middleslicex),len(middleslicex[0])])
         self.CTSlicey=np.zeros([len(middleslicey),len(middleslicey[0])])
+        self.CTVoxels=np.array(tuple(voxels))
+        self.CTCylinder=create_cylinder(
+            int(math.pi * len(self.CTVoxels[0]) * (1.0 - Crop_pct)),
+            len(self.CTVoxels), self.CTVoxels, 1.0 - Crop_pct, (Offsetx/Diameter, Offsety/Diameter))
 
         for j in range(0,len(sliceList)-1):
             self.CTPixel[j]=sliceList[j]
@@ -96,27 +167,39 @@ class Dicom:
 
         pb_hD.stop()
 
+        pathTuple = os.path.split(Path)
+        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_cylinder.jpg"), self.CTCylinder)
+        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_xz.jpg"), self.CTSlice)
+        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_yz.jpg"), self.CTSlicey)
+        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_xy.jpg"), ds.pixel_array)
+
 
     # Show the image
 
         if (display_img):
 
             fig1 = plt.figure()
-            ax1 = fig1.add_subplot(132,aspect='equal')
+            ax0 = fig1.add_subplot(234,aspect='equal')
+            ax0.set_title("Edge Slice")
+            ax0.set_xlabel('Angle')
+            ax0.set_ylabel('Z')
+            ax0.matshow(self.CTCylinder, cmap=plt.cm.gray,aspect='equal')
+
+            ax1 = fig1.add_subplot(232,aspect='equal')
             ax1.set_title("XZ Slice")
             ax1.set_xlabel('X')
             ax1.set_ylabel('Z')
             ax1.matshow(self.CTSlice, cmap=plt.cm.gray,aspect='equal')
             ax1.add_patch(patches.Rectangle((a-Offsetr-a*Crop_pct, 0), 2*a*Crop_pct,    length, fill=False,edgecolor="red"))
 
-            ax3 = fig1.add_subplot(133,aspect='equal')
+            ax3 = fig1.add_subplot(233,aspect='equal')
             ax3.set_title("YZ Slice")
             ax3.set_xlabel('Y')
             ax3.set_ylabel('Z')
             ax3.matshow(self.CTSlicey, cmap=plt.cm.gray,aspect='equal')
             ax3.add_patch(patches.Rectangle((a-Offsetc-a*Crop_pct, 0), 2*a*Crop_pct,    length, fill=False,edgecolor="red"))
 
-            ax2 = fig1.add_subplot(131,aspect='equal')
+            ax2 = fig1.add_subplot(231,aspect='equal')
             ax2.set_title("XY Slice")
             ax2.set_xlabel('X')
             ax2.set_ylabel('Y')

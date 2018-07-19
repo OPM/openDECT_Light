@@ -103,14 +103,18 @@ def create_cylinder(imageWidth, imageHeight, voxels, radius = 1.0, offset = (0, 
             imageData[y][x] = get_pixel_trilinear(voxels, voxelPos[0], voxelPos[1], voxelPos[2])
     return imageData
 
+def parse_path(path):
+    (rest, energy) = os.path.split(path)
+    (rest, date) = os.path.split(rest)
+    (rest, depth) = os.path.split(rest)
+    (rest, well) = os.path.split(rest)
+    return {"well": well, "date": date, "depth": depth, "energy": energy}
 
 #Define a class to return the values slice by slice from the dicom
 
 class Dicom:
-    def __init__(self,Path,display_img,Pixel):
-
+    def __init__(self,Path,display_img,Pixel,SaveImg):
         # Initialisation of the arrays
-
         sliceList=[]
         middleslicex=[]
         middleslicey=[]
@@ -126,8 +130,6 @@ class Dicom:
         pb_hD.maximum=length
 
         for i,f in enumerate(files):
-
-
             if StopRun ==True: break
             if (i<=length-Padding_top and i>=Padding_bottom):
                 if int(i*100/length)-int((i-1)*100/length)==1:
@@ -156,9 +158,11 @@ class Dicom:
         self.CTSlice=np.zeros([len(middleslicex),len(middleslicex[0])])
         self.CTSlicey=np.zeros([len(middleslicey),len(middleslicey[0])])
         self.CTVoxels=np.array(tuple(voxels))
-        self.CTCylinder=create_cylinder(
-            int(math.pi * len(self.CTVoxels[0]) * (1.0 - Crop_pct)),
-            len(self.CTVoxels), self.CTVoxels, 1.0 - Crop_pct, (Offsetx/Diameter, Offsety/Diameter))
+        cylinderImageWidth = int(math.pi * len(self.CTVoxels[0]) * (1.0 - Crop_pct))
+        cylinderImageHeight = len(self.CTVoxels)
+        cylinderRadius = 1.0 - Crop_pct # from 0 to 1
+        self.CTCylinder=create_cylinder(cylinderImageWidth, cylinderImageHeight, self.CTVoxels, 
+            cylinderRadius, (Offsetx/Diameter, Offsety/Diameter))
 
         for j in range(0,len(sliceList)-1):
             self.CTPixel[j]=sliceList[j]
@@ -167,14 +171,17 @@ class Dicom:
 
         pb_hD.stop()
 
-        pathTuple = os.path.split(Path)
-        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_cylinder.jpg"), self.CTCylinder)
-        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_xz.jpg"), self.CTSlice)
-        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_yz.jpg"), self.CTSlicey)
-        imageio.imsave(os.path.join(pathTuple[0], pathTuple[1] + "_xy.jpg"), ds.pixel_array)
+        if (SaveImg):
+            pathElements = parse_path(Path)
+            saveDir = os.path.dirname(Path)
+            realDiameter = len(self.CTVoxels[0]) * cylinderRadius / 2
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_UNR_" + str(realDiameter) + "mm.jpg"), self.CTCylinder)
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XZ.jpg"), self.CTSlice)
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_YZ.jpg"), self.CTSlicey)
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XY.jpg"), ds.pixel_array)
 
 
-    # Show the image
+        # Show the image
 
         if (display_img):
 
@@ -389,9 +396,9 @@ def Calc_for_well(myfolder,maincsv):
             for name in os.listdir(path):
 
                 if (name=="140kV"):
-                    highenergy=Dicom(os.path.join(path,name),Check,Mask_saturated)
+                    highenergy=Dicom(os.path.join(path,name),Check,Mask_saturated,True)
                 if (name=="80kV"):
-                    lowenergy=Dicom(os.path.join(path,name),Check,Mask_saturated)
+                    lowenergy=Dicom(os.path.join(path,name),Check,Mask_saturated,False)
 
 
             (Density,Pe,Phi,nnslices,AvgHighCT,AvgLowCT,Zeff)=Calculate_Parameters(lowenergy,highenergy,Mask_saturated)
@@ -417,8 +424,8 @@ def Main():
     else:
         rootdir=dirnamelow
         rootdir2=dirnamehigh
-        highenergy=Dicom(rootdir,Check,Mask_saturated)
-        lowenergy=Dicom(rootdir2,Check,Mask_saturated)
+        highenergy=Dicom(rootdir,Check,Mask_saturated,True)
+        lowenergy=Dicom(rootdir2,Check,Mask_saturated,False)
 
         (Density,Pe,Phi,nnslices,AvgLowCT,AvgHighCT,Zeff)=Calculate_Parameters(lowenergy,highenergy,Mask_saturated)
         Tbox.insert(END, "Density mean value: "+str(np.mean(Density))+"\n")

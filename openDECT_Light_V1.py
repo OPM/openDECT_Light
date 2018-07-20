@@ -158,9 +158,9 @@ class Dicom:
         self.CTSlice=np.zeros([len(middleslicex),len(middleslicex[0])])
         self.CTSlicey=np.zeros([len(middleslicey),len(middleslicey[0])])
         self.CTVoxels=np.array(tuple(voxels))
-        cylinderImageWidth = int(math.pi * len(self.CTVoxels[0]) * (1.0 - Crop_pct))
+        cylinderImageWidth = int(math.pi * len(self.CTVoxels[0]) * Crop_pct)
         cylinderImageHeight = len(self.CTVoxels)
-        cylinderRadius = 1.0 - Crop_pct # from 0 to 1
+        cylinderRadius = Crop_pct # from 0 to 1
         self.CTCylinder=create_cylinder(cylinderImageWidth, cylinderImageHeight, self.CTVoxels, 
             cylinderRadius, (Offsetx/Diameter, Offsety/Diameter))
 
@@ -175,9 +175,13 @@ class Dicom:
             pathElements = parse_path(Path)
             saveDir = os.path.dirname(Path)
             realDiameter = len(self.CTVoxels[0]) * cylinderRadius / 2
+            xzSliceStart = int(a - Offsetr - a * Crop_pct)
+            xzSliceEnd = xzSliceStart + int(2 * a * Crop_pct)
+            yzSliceStart = int(a - Offsetc - a * Crop_pct)
+            yzSliceEnd = yzSliceStart + int(2 * a * Crop_pct)
             imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_UNR_" + str(realDiameter) + "mm.jpg"), self.CTCylinder)
-            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XZ.jpg"), self.CTSlice)
-            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_YZ.jpg"), self.CTSlicey)
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XZ.jpg"), self.CTSlice[:,xzSliceStart:xzSliceEnd])
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_YZ.jpg"), self.CTSlicey[:,yzSliceStart:yzSliceEnd])
             imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XY.jpg"), ds.pixel_array)
 
 
@@ -197,14 +201,14 @@ class Dicom:
             ax1.set_xlabel('X')
             ax1.set_ylabel('Z')
             ax1.matshow(self.CTSlice, cmap=plt.cm.gray,aspect='equal')
-            ax1.add_patch(patches.Rectangle((a-Offsetr-a*Crop_pct, 0), 2*a*Crop_pct,    length, fill=False,edgecolor="red"))
+            ax1.add_patch(patches.Rectangle((a-Offsetr-a*Crop_pct, 0), 2*a*Crop_pct, length, fill=False,edgecolor="red"))
 
             ax3 = fig1.add_subplot(233,aspect='equal')
             ax3.set_title("YZ Slice")
             ax3.set_xlabel('Y')
             ax3.set_ylabel('Z')
             ax3.matshow(self.CTSlicey, cmap=plt.cm.gray,aspect='equal')
-            ax3.add_patch(patches.Rectangle((a-Offsetc-a*Crop_pct, 0), 2*a*Crop_pct,    length, fill=False,edgecolor="red"))
+            ax3.add_patch(patches.Rectangle((a-Offsetc-a*Crop_pct, 0), 2*a*Crop_pct, length, fill=False,edgecolor="red"))
 
             ax2 = fig1.add_subplot(231,aspect='equal')
             ax2.set_title("XY Slice")

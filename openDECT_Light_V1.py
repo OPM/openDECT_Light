@@ -158,9 +158,9 @@ class Dicom:
         self.CTSlice=np.zeros([len(middleslicex),len(middleslicex[0])])
         self.CTSlicey=np.zeros([len(middleslicey),len(middleslicey[0])])
         self.CTVoxels=np.array(tuple(voxels))
-        cylinderImageWidth = int(math.pi * len(self.CTVoxels[0]) * (1.0 - Crop_pct))
+        cylinderImageWidth = int(math.pi * len(self.CTVoxels[0]) * Crop_pct)
         cylinderImageHeight = len(self.CTVoxels)
-        cylinderRadius = 1.0 - Crop_pct # from 0 to 1
+        cylinderRadius = Crop_pct # from 0 to 1
         self.CTCylinder=create_cylinder(cylinderImageWidth, cylinderImageHeight, self.CTVoxels, 
             cylinderRadius, (Offsetx/Diameter, Offsety/Diameter))
 

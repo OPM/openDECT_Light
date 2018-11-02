@@ -174,15 +174,15 @@ class Dicom:
         if (SaveImg):
             pathElements = parse_path(Path)
             saveDir = os.path.dirname(Path)
-            realDiameter = len(self.CTVoxels[0]) * cylinderRadius / 2
+            realDiameter = Crop_pct * Diameter 
+            diamtodisplay = int(realDiameter)
             xzSliceStart = int(a - Offsetr - a * Crop_pct)
             xzSliceEnd = xzSliceStart + int(2 * a * Crop_pct)
             yzSliceStart = int(a - Offsetc - a * Crop_pct)
             yzSliceEnd = yzSliceStart + int(2 * a * Crop_pct)
-            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_UNR_" + str(realDiameter) + "mm.jpg"), self.CTCylinder)
+            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_UNR_" + str(diamtodisplay) + ".jpg"), self.CTCylinder)
             imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XZ.jpg"), self.CTSlice[:,xzSliceStart:xzSliceEnd])
             imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_YZ.jpg"), self.CTSlicey[:,yzSliceStart:yzSliceEnd])
-            imageio.imsave(os.path.join(saveDir, pathElements["depth"] + "_XY.jpg"), ds.pixel_array)
 
 
         # Show the image
@@ -611,7 +611,7 @@ if __name__ == '__main__':
 ###############
     var_getImaChk = IntVar()
 
-    label10 = Label(stepTwo, text='Core Diameter (mm)')
+    label10 = Label(stepTwo, text='FOV (mm)')
     label10.grid(row=0, column=0, sticky='E', padx=5, pady=2)
     CoreDia = Entry(stepTwo, width=25)
     CoreDia.grid(row=0, column=1, sticky='E', padx=5, pady=2)
